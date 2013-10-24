@@ -25,11 +25,11 @@ global strAPODPicturesFolder
 #RPi
 #strAPODPicturesFolder = '/home/pi/pishare/'
 #Nook HD+ 
-strAPODPicturesFolder = '/mnt/ext_sdcard/Pictures/apod/'
-strAPODDataFolder = '/mnt/ext_sdcard/Pictures/apod/data/'
+#strAPODPicturesFolder = '/mnt/ext_sdcard/Pictures/apod/'
+#strAPODDataFolder = '/mnt/ext_sdcard/Pictures/apod/data/'
 #Win7 Folder
-#strAPODPicturesFolder = "C:\\Users\\Dave\\Pictures\\apod\\"
-#strAPODDataFolder = "C:\\Users\\Dave\\Pictures\\apod\\data\\"
+strAPODPicturesFolder = "C:\\Users\\Dave\\Pictures\\apod\\"
+strAPODDataFolder = "C:\\Users\\Dave\\Pictures\\apod\\data\\"
 #Note2 Folder
 #strAPODPicturesFolder = "/mnt/extSdCard/PhotoAlbums/apod/"
 # Should we remove any extra images we may have downloaded during prior executions?
@@ -37,10 +37,10 @@ global bCleanExtras
 bCleanExtras = False
 # How long should we wait as a courtesy after doing work
 global lWaitTime
-lWaitTime = 0.5
+lWaitTime = 0.9
 # Do we only process recent files (up until finding a file previously downloaded)?
 global bOnlyRecent
-bOnlyRecent = True
+bOnlyRecent = False
 
 def DownloadImageFromAPODPage(url):
     # Copy all of the content from the provided web page
@@ -102,14 +102,18 @@ def DownloadImageFromAPODPage(url):
             iLoc = iLoc - 1
             if iLoc > 0 and (strAPODFileName <> ""):
                 txtPName = txtPName[0:iLoc].strip().replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').replace('  ', ' ').replace('Explanation: ', '')
-                print "P: " + txtPName
-                print "FN: " + strAPODFileName.replace('.jpg', '_Info.txt')
-                f = open(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Info.txt'), 'w')
-                f.write(txtPName.encode('utf8'))
-                f.close
-                f = open(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Title.txt'), 'w')
-                f.write(txtName.encode('utf8'))
-                f.close
+                if not (os.path.isfile(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Title.txt'))):
+                    print "Title: " + txtName
+                    print "FN: " + strAPODFileName.replace('.jpg', '_Title.txt')
+                    f = open(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Title.txt'), 'w')
+                    f.write(txtName.encode('utf8'))
+                    f.close
+                if not (os.path.isfile(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Info.txt'))):
+                    print "Info Paragraph: " + txtPName
+                    print "FN: " + strAPODFileName.replace('.jpg', '_Info.txt')
+                    f = open(strAPODDataFolder + strAPODFileName.replace('.jpg', '_Info.txt'), 'w')
+                    f.write(txtPName.encode('utf8'))
+                    f.close
 
 # Grab image url
 class GetIMGURLFromAPODPage(HTMLParser):
@@ -188,33 +192,35 @@ def ProcessAPODPage(APODUrl):
 
 class ProcessPagesInArchive(HTMLParser):
     def handle_starttag(self, tag, attrs):
-        tmpoutput = ""
-        count = 0
-        global bVerified
-        global bOnlyRecent
-        # Only parse the 'anchor' tag.
-        if tag == "a":
-            # Check the list of defined attributes.
-            for name, value in attrs:
-                # If href is defined, print it.
-                if name == "href" and not (bOnlyRecent and bVerified):
-                    if (value != "astropix.html") and (value[len(value) - 5:len(value)] == ".html"):
-                        #print value
-                        if (not "http://" in value) and (not "/" in value): 
-                            #print "Page: " + value
-                            pageurl = 'http://apod.nasa.gov/apod/' + value
-                            #print "URL: " + pageurl
-                            #ProcessAPODPage(pageurl)
-                            try:
-                                global bDoWork
-                                bDoWork = True
-                                DownloadImageFromAPODPage(pageurl)
-                                if (bDoWork):
-                                    print "No JPG Found: " + pageurl
-                                sleep(lWaitTime)           
-                            except TypeError:
-                                print "Type Error: " + pageurl
-
+        try:
+            tmpoutput = ""
+            count = 0
+            global bVerified
+            global bOnlyRecent
+            # Only parse the 'anchor' tag.
+            if tag == "a":
+                # Check the list of defined attributes.
+                for name, value in attrs:
+                    # If href is defined, print it.
+                    if name == "href" and not (bOnlyRecent and bVerified):
+                        if (value != "astropix.html") and (value[len(value) - 5:len(value)] == ".html"):
+                            #print value
+                            if (not "http://" in value) and (not "/" in value): 
+                                #print "Page: " + value
+                                pageurl = 'http://apod.nasa.gov/apod/' + value
+                                #print "URL: " + pageurl
+                                #ProcessAPODPage(pageurl)
+                                try:
+                                    global bDoWork
+                                    bDoWork = True
+                                    DownloadImageFromAPODPage(pageurl)
+                                    if (bDoWork):
+                                        print "No JPG Found: " + pageurl
+                                    sleep(lWaitTime)           
+                                except TypeError:
+                                    print "Type Error: " + pageurl
+        except:
+            print "Error Occured"
 
 def ProcessAPODArchive():
     try:
